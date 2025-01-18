@@ -88,6 +88,7 @@ Step 2: Read & wrangle data
 ```{r}
 # HINT: check for coding of missing values (`na = "-99999"`)
 
+# read in the data, convert "-99999" to NA, and clean col names
 rawdata <- read_csv(here("data", "spiny_abundance_sb_18.csv"), na = "-99999") |>
     clean_names()
 
@@ -100,7 +101,7 @@ rawdata <- read_csv(here("data", "spiny_abundance_sb_18.csv"), na = "-99999") |>
 ```
 
 ```{r}
-# Help??
+# Add long lables to our sites and save in a col named reef
 tidydata <- rawdata |>
     mutate(reef = factor(site, 
                          levels = c("AQUE", "CARP", "MOHK", "IVEE", "NAPL"), 
@@ -124,13 +125,15 @@ Create new `df` named `spiny_counts`
 
 #HINT(e): Use `case_when()` to create the 3 new variable columns
 
+# assign each site either mpa or non-mpa, and 1 or 0
 spiny_counts <- tidydata |>
     group_by(site, year, transect) |>
-    summarise(count = n(), mean_size = mean(size_mm, na.rm = TRUE)) |>
+    summarise(count = sum(count, na.rm = TRUE), mean_size = mean(size_mm, na.rm = TRUE)) |>
     mutate(mpa = case_when(site %in% c("IVEE", "NAPL") ~ "MPA",
                            .default = "non_MPA")) |>
     mutate(treat = case_when(mpa == "MPA" ~ 1,
-                             .default = 0))
+                             .default = 0)) |>
+    ungroup()
 
 ```
 
@@ -162,17 +165,71 @@ Create a plot of lobster **size** :
 4)  You choose the grouping variable(s)!
 
 ```{r}
-# plot 1: ....
+# plot 1: Ridge plot grouped by reef site
+library(ggridges)
 
 spiny_counts %>% 
-ggplot()
+    ggplot(aes(x = count, y = site)) +
+    geom_density_ridges2(quantile_lines = TRUE,
+                         quantiles = 2,
+                         alpha = 0.3,
+                         fill = "coral") +
+    xlab("California Spiny Lobster Count") +
+    ylab("Reef Site") +
+    labs(title = "Distribution of California Spiny Lobster Counts by Reef Site & Median Counts") +
+    theme_minimal()
+```
+```{r}
+# Plot 2: Jitter plot of counts grouped by MPA status
+spiny_counts |>
+    ggplot(aes(y = count, x = mpa)) +
+    geom_boxplot(width = 0.2, outliers = FALSE) +
+    geom_jitter(width = 0.3, color = "coral", alpha = 0.5) +
+    xlab("MPA Status") +
+    ylab("California Spiny Lobster Count") +
+    labs(title = "Distribution of California Spiny Lobster Counts by MPA status") +
+    theme_minimal()
     
 ```
+
+```{r}
+# Plot 3: Grouped by year
+spiny_counts %>% 
+    ggplot(aes(x = count, y = factor(year))) +
+    geom_violin(trim = TRUE) +
+    stat_summary(fun.y = mean, geom = "point", color = "coral", size = 3, alpha = 0.7)  +
+    xlab("California Spiny Lobster Count") +
+    ylab("Year") +
+    labs(title = "Distribution of California Spiny Lobster Counts by Year & Yearly Average Counts") +
+    theme_minimal()
+
+```
+
+```{r}
+# Plot 4: Plot of lobster size
+library(ggbeeswarm)
+
+spiny_counts |>
+    ggplot(aes(x = mean_size, fill = mpa)) +
+    geom_density(alpha = 0.5) +
+    scale_fill_manual(values = c("coral", "lightyellow")) +
+    xlab("California Spiny Lobster Mean Size") +
+    ylab("Density") +
+    labs(title = "Distribution of CA Spiny Lobster Size by MPA Status") +
+    theme_minimal()
+    
+```
+
 
 **c.** Compare means of the outcome by treatment group. Using the `tbl_summary()` function from the package [`gt_summary`](https://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html)
 
 ```{r}
 # USE: gt_summary::tbl_summary()
+ spiny_counts |> 
+    dplyr::select(count, mean_size, mpa) |>
+    tbl_summary(by = mpa,
+                statistic = list(all_continuous() ~ "{mean}")) |>
+    modify_caption("**Comparing CA Spiny Lobster mean counts and sizes between MPA and non-MPA sites**")
 ```
 
 ------------------------------------------------------------------------
