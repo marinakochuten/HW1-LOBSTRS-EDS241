@@ -239,11 +239,13 @@ Step 4: OLS regression- building intuition
 **a.** Start with a simple OLS estimator of lobster counts regressed on treatment. Use the function `summ()` from the [`jtools`](https://jtools.jacob-long.com/) package to print the OLS output
 
 **b.** Interpret the intercept & predictor coefficients *in your own words*. Use full sentences and write your interpretation of the regression results to be as clear as possible to a non-academic audience.
+    - **At the non-MPA reef sites, there are about 23 CA Spiny Lobsters. At MPA designated reef sites, there are about 5 more CA Spiny Lobsters for a total count of 28 lobsters.**
 
 ```{r}
 # NOTE: We will not evaluate/interpret model fit in this assignment (e.g., R-square)
 
-m1_ols <- 
+m1_ols <- lm(count ~ treat,
+             data = spiny_counts)
 
 summ(m1_ols, model.fit = FALSE) 
 
@@ -256,18 +258,22 @@ summ(m1_ols, model.fit = FALSE)
 ```{r}
 check_model(m1_ols,  check = "qq" )
 ```
+**The qq plot above shows us that the residuals are not normally distributed, which violates one of the key assumptions of OLS. This tells us that OLS may not be the best model for our data.**
 
 ```{r}
 check_model(m1_ols, check = "normality")
 ```
+**This plot above showing the distribution of our residuals shows us, again, that they are not normally distributed, violating a key OLS assumption. In this case, the residuals are closer to a log-normal distribution.**
 
 ```{r}
 check_model(m1_ols, check = "homogeneity")
 ```
+**Another assumption of OLS is that the residuals have constant variance. In this plot above, we can see that the variance is not constant, violating the OLS assumption.**
 
 ```{r}
 check_model(m1_ols, check = "pp_check")
 ```
+**In the figure above, we can see that the actual (observed) data is not a good fit to what we would expect from the model. Because these 4 plots show us that key assumptions of OLS are not being met, and that the observed data is not a good match to the model-predicted data, we can say that OLS is not the best model in this case.**
 
 ------------------------------------------------------------------------
 
@@ -275,36 +281,53 @@ Step 5: Fitting GLMs
 
 **a.** Estimate a Poisson regression model using the `glm()` function
 
-**b.** Interpret the predictor coefficient in your own words. Use full sentences and write your interpretation of the results to be as clear as possible to a non-academic audience.
-
-**c.** Explain the statistical concept of dispersion and overdispersion in the context of this model.
-
-**d.** Compare results with previous model, explain change in the significance of the treatment effect
-
 ```{r}
 #HINT1: Incidence Ratio Rate (IRR): Exponentiation of beta returns coefficient which is interpreted as the 'percent change' for a one unit increase in the predictor 
 
 #HINT2: For the second glm() argument `family` use the following specification option `family = poisson(link = "log")`
 
-m2_pois <- 
+# Estimate Poisson regression model
+m2_pois <- glm(count ~ treat,
+               family = poisson(link = "log"),
+               data = spiny_counts)
+
+# Print poisson model output
+summ(m2_pois, model.fit = FALSE)
+
+# Interpret results as percent change
+# Use this way to avoid hard-coding? exp(m2_pois$coefficients[2]) - 1
+exp(0.21)-1
 
 ```
 
+**b.** Interpret the predictor coefficient in your own words. Use full sentences and write your interpretation of the results to be as clear as possible to a non-academic audience.
+    - **In this model, there are 23% more lobsters at MPA reef sites than at non-MPA reef sites.**
+
+**c.** Explain the statistical concept of dispersion and overdispersion in the context of this model.
+    - **Poisson regression makes an assumption that variance (dispersion) is proportional to the mean. If the data has overdispersion, then the variance (dispersion) is greater than the mean.**
+
+**d.** Compare results with previous model, explain change in the significance of the treatment effect
+    - **In the previous model (OLS), we saw an increase of about 5 lobsters in MPA sites compared to non-MPA sites, which in this case calculates to about a 23.6% increase. In the current model (Poisson), we see a 23.4% increase in lobsters in the MPA sites. The new model *slightly* decreases the significance of the treatment effect.** 
+    
 **e.** Check the model assumptions. Explain results.
 
-**f.** Conduct tests for over-dispersion & zero-inflation. Explain results.
+Help interpreting this?? ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ```{r}
 check_model(m2_pois)
 ```
 
+**f.** Conduct tests for over-dispersion & zero-inflation. Explain results.
+
 ```{r}
 check_overdispersion(m2_pois)
 ```
+**This test implies the dispersion (variance) is significantly larger than the mean!**
 
 ```{r}
 check_zeroinflation(m2_pois)
 ```
+**This test implies that the model is predicting less zeros than actually occur in the data (underfitting zeros), which means there is probable zero-inflation. This model may not be the best fit for our data.**
 
 **g.** Fit a negative binomial model using the function glm.nb() from the package `MASS` and check model diagnostics
 
