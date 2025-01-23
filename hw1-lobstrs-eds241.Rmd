@@ -213,10 +213,16 @@ spiny_counts |>
     ggplot(aes(x = mean_size, fill = mpa)) +
     geom_density(alpha = 0.5) +
     scale_fill_manual(values = c("coral", "lightyellow")) +
-    xlab("California Spiny Lobster Mean Size") +
+    xlab("California Spiny Lobster Mean Size (mm)") +
     ylab("Density") +
     labs(title = "Distribution of CA Spiny Lobster Size by MPA Status") +
-    theme_minimal()
+    theme_minimal() +
+    geom_vline(xintercept = mean(spiny_counts$mean_size, na.rm = TRUE), color = "black") +
+    geom_label(aes(x = 61.5, 
+                  y = 0.065,
+                  label = paste("Overall Lobster Mean Size = ", round(mean(spiny_counts$mean_size, na.rm = TRUE), 2), "mm")),
+               size = 3,
+               show.legend = FALSE)
     
 ```
 
@@ -311,7 +317,7 @@ exp(0.21)-1
     
 **e.** Check the model assumptions. Explain results.
 
-Help interpreting this?? ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    - **Checking the model assumptions below, we can see that the Poisson model wasn't the best fit. In the pp-check, the prediced values do not follow the observed data. In the zero-inflation check, the residual variance does not follow the predicted. We can also see in the q-q plot that the residuals are not normally distributed.**
 
 ```{r}
 check_model(m2_pois)
@@ -333,14 +339,24 @@ check_zeroinflation(m2_pois)
 
 **h.** In 1-2 sentences explain rationale for fitting this GLM model.
 
+**Negative binomial regression is a generalization of Poisson regression which loosens the restrictive assumption that the variance is equal to the mean. In the overdispersion test above, we saw that in this case variance is significantly larger than the mean. Therefore, we needed to pick a model does not assume equal variance and mean.**
+
 **i.** Interpret the treatment estimate result in your own words. Compare with results from the previous model.
+
+**In this model, there are 23% more lobsters in our treatment (MPA) group than our control (non-MPA) group. This effect is the same that we observed in the previous model.**
 
 ```{r}
 
 # NOTE: The `glm.nb()` function does not require a `family` argument
 
-m3_nb <- 
+m3_nb <- glm.nb(count ~ treat,
+               data = spiny_counts)
 
+# Print negative binomial model output
+summ(m3_nb, model.fit = FALSE)
+
+# Interpret results as percent change
+exp(0.21)-1
 ```
 
 ```{r}
@@ -367,9 +383,11 @@ Step 6: Compare models
 
 **c.** Write a short paragraph comparing the results. Is the treatment effect `robust` or stable across the model specifications.
 
+**In the OLS model, there are about 5 more lobsters in MPA sites than non-MPA sites, or a 23.6% increase in lobsters in MPA sites. In the Poisson and the negative binomial model, there is a 23.4% increase in lobsters in MPA sites. The treatment effect is stable across the model specifications.**
+
 ```{r}
 
-export_summs(# ADD MODELS
+export_summs(m1_ols, m2_pois, m3_nb,
              model.names = c("OLS","Poisson", "NB"),
              statistics = "none")
 
@@ -381,23 +399,27 @@ Step 7: Building intuition - fixed effects
 
 **a.** Create new `df` with the `year` variable converted to a factor
 
-**b.** Run the following OLS model using `lm()`
+**b.** Run the following OLS model using `glm.nb()`
 
--   Use the following specification for the outcome `log(counts+1)`
--   Estimate fixed effects for `year`
+-   Add fixed effects for `year` (i.e., dummy coefficients)
 -   Include an interaction term between variables `treat` and `year`
 
 **c.** Take a look at the regression output. Each coefficient provides a comparison or the difference in means for a specific sub-group in the data. Informally, describe the what the model has estimated at a conceptual level (NOTE: you do not have to interpret coefficients individually)
+    - **The model is estimating the effect that the treatment has on lobster counts for each year, from 2012 - 2018. For each year, it is estimating the mean count in both the treatment and the control groups.**
 
 **d.** Explain why the main effect for treatment is negative? \*Does this result make sense?
+    - **The coefficient for treat represents the difference in lobster counts in MPA sites vs non-MPA sites in 2012. Since it is negative, the model estimates that there were less lobsters in MPA sites than non-MPA sites in 2012. Seeing that MPA sites were not designated in 2012, it makes sense that we would not see an increase in lobster counts right away.**
 
 ```{r}
 
 ff_counts <- spiny_counts %>% 
     mutate(year=as_factor(year))
     
-m5_fixedeffs <- lm(
-    log(counts+1) ~ treat*year,
+m5_fixedeffs <- glm.nb(
+    count ~
+        treat +
+        year +
+        treat*year,
     data = ff_counts)
 
 summ(m5_fixedeffs, model.fit = FALSE)
@@ -405,7 +427,8 @@ summ(m5_fixedeffs, model.fit = FALSE)
 
 **e.** Look at the model predictions: Use the `interact_plot()` function from package `interactions` to plot mean predictions by year and treatment status.
 
-**f.** Re-evaluate your responses (c) and (b) above.
+**f.** Re-evaluate your responses (c) and (d) above.
+    - **The plot affirms my responses from above. The model is estimating the treatment effect on lobster counts in MPA sites vs. non-MPA sites. The negative coefficients are telling us that in 2012 and 2013, there were less lobsters in the newly designated MPA sites than non-MPA sites. Looking at the plot, we can see that this changes over time and eventually, there are more lobsters in MPA sites than non-MPA sites.**
 
 ```{r}
 
@@ -413,8 +436,9 @@ summ(m5_fixedeffs, model.fit = FALSE)
 # Hint 2: Convert variable `year` to a factor
 
 interact_plot(m5_fixedeffs, pred = year, modx = treat,
-              outcome.scale = "response")
+              outcome.scale = "response")  # NOTE: y-axis on log-scale
 
+# HINT: Change `outcome.scale` to "response" to convert y-axis to counts
 ```
 
 **g.** Using `ggplot()` create a plot in same style as the previous `interaction plot`, but displaying the original scale of the outcome variable (lobster counts). This type of plot is commonly used to show how the treatment effect changes across discrete time points (i.e., panel data).
@@ -425,9 +449,26 @@ The plot should have... - `year` on the x-axis - `counts` on the y-axis - `mpa` 
 # Hint 1: Group counts by `year` and `mpa` and calculate the `mean_count`
 # Hint 2: Convert variable `year` to a factor
 
-plot_counts <- 
+plot_counts <- spiny_counts |>
+    group_by(year, mpa) |> 
+    summarise(mean_count = mean(count, na.rm = TRUE)) |> 
+    mutate(year = as_factor(year)) |>
+    ungroup()
 
-# plot_counts %>% ggplot() ...
+plot_counts |>  
+    ggplot(aes(x = year, y = mean_count, group = mpa, color = mpa, linetype = mpa)) +
+    geom_point(size = 4) +
+    geom_line(size = 1) +
+    scale_color_manual(values = c("#1D4677", "#A9D1F6" ),
+                       labels = c("MPA", "Non-MPA")) +
+    scale_linetype_manual(values = c("solid", "longdash"),
+                          labels = c("MPA", "Non-MPA")) +
+    theme_minimal() +
+    labs(title = "Mean lobster counts in MPA vs non-MPA designated reefs from 2012 - 2018",
+         color = "MPA designation",
+         linetype = "MPA designation") +
+    xlab("Year") +
+    ylab("Mean Lobster Count")
 ```
 
 ------------------------------------------------------------------------
