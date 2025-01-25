@@ -10,7 +10,7 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(eval=FALSE, warning = FALSE, message = FALSE )
+knitr::opts_chunk$set(eval=TRUE, warning = FALSE, message = FALSE )
 ```
 
 ------------------------------------------------------------------------
@@ -36,7 +36,7 @@ knitr::opts_chunk$set(eval=FALSE, warning = FALSE, message = FALSE )
 ------------------------------------------------------------------------
 
 ```{r}
-
+# Load libraries
 library(tidyverse)
 library(here)
 library(janitor)
@@ -75,7 +75,7 @@ Step 1: Anticipating potential sources of selection bias
 
 **a.** Do the control sites (Arroyo Quemado, Carpenteria, and Mohawk) provide a strong counterfactual for our treatment sites (Naples, Isla Vista)? Write a paragraph making a case for why this comparison is centris paribus or whether selection bias is likely (be specific!).
 
--   I would say that selection bias is likely. Seeing that the 5 sites are all fairly close together, it is possible that effects on lobster health from the treatment (MPA) sites could spill over into the control (non-MPA) sites. This would mean that our control group would not accurately represent California Spiny Lobsters that are not near MPAs! However, from a quick Google search, it seems unclear how far lobsters tend to travel, which could mean that they do not travel far enough to reach the control sites.
+-   **I would say that the control sites do provide a strong counterfactual for our treatment sites. I would expect that lobster populations between the MPA sites and non-MPA sites were likely equal before the establishment of MPAs. The sites chosen for this experiment all fall well within the range of the California Spiny Lobster and they are all at similar locations geographically.**
 
 ------------------------------------------------------------------------
 
@@ -179,6 +179,7 @@ spiny_counts %>%
     labs(title = "Distribution of California Spiny Lobster Counts by Reef Site & Median Counts") +
     theme_minimal()
 ```
+
 ```{r}
 # Plot 2: Jitter plot of counts grouped by MPA status
 spiny_counts |>
@@ -226,7 +227,6 @@ spiny_counts |>
     
 ```
 
-
 **c.** Compare means of the outcome by treatment group. Using the `tbl_summary()` function from the package [`gt_summary`](https://www.danieldsjoberg.com/gtsummary/articles/tbl_summary.html)
 
 ```{r}
@@ -244,8 +244,7 @@ Step 4: OLS regression- building intuition
 
 **a.** Start with a simple OLS estimator of lobster counts regressed on treatment. Use the function `summ()` from the [`jtools`](https://jtools.jacob-long.com/) package to print the OLS output
 
-**b.** Interpret the intercept & predictor coefficients *in your own words*. Use full sentences and write your interpretation of the regression results to be as clear as possible to a non-academic audience.
-    - **At the non-MPA reef sites, there are about 23 CA Spiny Lobsters. At MPA designated reef sites, there are about 5 more CA Spiny Lobsters for a total count of 28 lobsters.**
+**b.** Interpret the intercept & predictor coefficients *in your own words*. Use full sentences and write your interpretation of the regression results to be as clear as possible to a non-academic audience. - **At the non-MPA reef sites, there are about 23 CA Spiny Lobsters. At MPA designated reef sites, there are about 5 more CA Spiny Lobsters for a total count of 28 lobsters.**
 
 ```{r}
 # NOTE: We will not evaluate/interpret model fit in this assignment (e.g., R-square)
@@ -264,21 +263,25 @@ summ(m1_ols, model.fit = FALSE)
 ```{r}
 check_model(m1_ols,  check = "qq" )
 ```
+
 **The qq plot above shows us that the residuals are not normally distributed, which violates one of the key assumptions of OLS. This tells us that OLS may not be the best model for our data.**
 
 ```{r}
 check_model(m1_ols, check = "normality")
 ```
+
 **This plot above showing the distribution of our residuals shows us, again, that they are not normally distributed, violating a key OLS assumption. In this case, the residuals are closer to a log-normal distribution.**
 
 ```{r}
 check_model(m1_ols, check = "homogeneity")
 ```
+
 **Another assumption of OLS is that the residuals have constant variance. In this plot above, we can see that the variance is not constant, violating the OLS assumption.**
 
 ```{r}
 check_model(m1_ols, check = "pp_check")
 ```
+
 **In the figure above, we can see that the actual (observed) data is not a good fit to what we would expect from the model. Because these 4 plots show us that key assumptions of OLS are not being met, and that the observed data is not a good match to the model-predicted data, we can say that OLS is not the best model in this case.**
 
 ------------------------------------------------------------------------
@@ -307,17 +310,20 @@ exp(0.21)-1
 ```
 
 **b.** Interpret the predictor coefficient in your own words. Use full sentences and write your interpretation of the results to be as clear as possible to a non-academic audience.
-    - **In this model, there are 23% more lobsters at MPA reef sites than at non-MPA reef sites.**
+
+-   **In this model, there are 23% more lobsters at MPA reef sites than at non-MPA reef sites.**
 
 **c.** Explain the statistical concept of dispersion and overdispersion in the context of this model.
-    - **Poisson regression makes an assumption that variance (dispersion) is proportional to the mean. If the data has overdispersion, then the variance (dispersion) is greater than the mean.**
+
+-   **Poisson regression makes an assumption that variance (dispersion) is proportional to the mean. If the data has overdispersion, then the variance (dispersion) is greater than the mean.**
 
 **d.** Compare results with previous model, explain change in the significance of the treatment effect
-    - **In the previous model (OLS), we saw an increase of about 5 lobsters in MPA sites compared to non-MPA sites, which in this case calculates to about a 23.6% increase. In the current model (Poisson), we see a 23.4% increase in lobsters in the MPA sites. The new model *slightly* decreases the significance of the treatment effect.** 
-    
+
+-   **In the previous model (OLS), we saw an increase of about 5 lobsters in MPA sites compared to non-MPA sites, which in this case calculates to about a 23.6% increase. In the current model (Poisson), we see a 23.4% increase in lobsters in the MPA sites. The new model *slightly* decreases the significance of the treatment effect.**
+
 **e.** Check the model assumptions. Explain results.
 
-    - **Checking the model assumptions below, we can see that the Poisson model wasn't the best fit. In the pp-check, the prediced values do not follow the observed data. In the zero-inflation check, the residual variance does not follow the predicted. We can also see in the q-q plot that the residuals are not normally distributed.**
+-   **Checking the model assumptions below, we can see that the Poisson model wasn't the best fit. In the pp-check, the prediced values do not follow the observed data. In the zero-inflation check, the residual variance does not follow the predicted. We can also see in the q-q plot that the residuals are not normally distributed.**
 
 ```{r}
 check_model(m2_pois)
@@ -328,11 +334,13 @@ check_model(m2_pois)
 ```{r}
 check_overdispersion(m2_pois)
 ```
+
 **This test implies the dispersion (variance) is significantly larger than the mean!**
 
 ```{r}
 check_zeroinflation(m2_pois)
 ```
+
 **This test implies that the model is predicting less zeros than actually occur in the data (underfitting zeros), which means there is probable zero-inflation. This model may not be the best fit for our data.**
 
 **g.** Fit a negative binomial model using the function glm.nb() from the package `MASS` and check model diagnostics
@@ -405,10 +413,12 @@ Step 7: Building intuition - fixed effects
 -   Include an interaction term between variables `treat` and `year`
 
 **c.** Take a look at the regression output. Each coefficient provides a comparison or the difference in means for a specific sub-group in the data. Informally, describe the what the model has estimated at a conceptual level (NOTE: you do not have to interpret coefficients individually)
-    - **The model is estimating the effect that the treatment has on lobster counts for each year, from 2012 - 2018. For each year, it is estimating the mean count in both the treatment and the control groups.**
+
+-   **The model is estimating the effect that the treatment has on lobster counts for each year, from 2012 - 2018. For each year, it is estimating the mean count in both the treatment and the control groups.**
 
 **d.** Explain why the main effect for treatment is negative? \*Does this result make sense?
-    - **The coefficient for treat represents the difference in lobster counts in MPA sites vs non-MPA sites in 2012. Since it is negative, the model estimates that there were less lobsters in MPA sites than non-MPA sites in 2012. Seeing that MPA sites were not designated in 2012, it makes sense that we would not see an increase in lobster counts right away.**
+
+-   **The coefficient for treat represents the difference in lobster counts in MPA sites vs non-MPA sites in 2012. Since it is negative, the model estimates that there were less lobsters in MPA sites than non-MPA sites in 2012. Seeing that MPA sites were not designated in 2012, it makes sense that we would not see an increase in lobster counts right away.**
 
 ```{r}
 
@@ -428,7 +438,8 @@ summ(m5_fixedeffs, model.fit = FALSE)
 **e.** Look at the model predictions: Use the `interact_plot()` function from package `interactions` to plot mean predictions by year and treatment status.
 
 **f.** Re-evaluate your responses (c) and (d) above.
-    - **The plot affirms my responses from above. The model is estimating the treatment effect on lobster counts in MPA sites vs. non-MPA sites. The negative coefficients are telling us that in 2012 and 2013, there were less lobsters in the newly designated MPA sites than non-MPA sites. Looking at the plot, we can see that this changes over time and eventually, there are more lobsters in MPA sites than non-MPA sites.**
+
+-   **The plot affirms my responses from above. The model is estimating the treatment effect on lobster counts in MPA sites vs. non-MPA sites. The negative coefficients are telling us that in 2012 and 2013, there were less lobsters in the newly designated MPA sites than non-MPA sites. Looking at the plot, we can see that this changes over time and eventually, there are more lobsters in MPA sites than non-MPA sites.**
 
 ```{r}
 
@@ -477,14 +488,25 @@ Step 8: Reconsider causal identification assumptions
 
 a.  Discuss whether you think `spillover effects` are likely in this research context (see Glossary of terms; <https://docs.google.com/document/d/1RIudsVcYhWGpqC-Uftk9UTz3PIq6stVyEpT44EPNgpE/edit?usp=sharing>)
 
+-   **I think it is possible that spillover effects occurred in this context! This seems like a debatable topic, but I think it is entirely possible that increased lobster population sizes in our MPA sites could spill over the invisible boundary of the MPAs and into our other reef sites. The sites are not that far apart, and lobsters are able to travel that far. However, looking at the plot above of mean lobster counts, the decrease in lobsters at Non-MPA sites from 2017-2018 compared to the sharp increase in MPA sites during that same time indicate that an abundance of lobsters in MPA sites may not be affecting counts in non-MPA sites.**
+
 b.  Explain why spillover is an issue for the identification of causal effects
 
+-   **In identifying causal effects, we really want our treatment and control groups to be independent of each other. If there is spillover and the treatment group is affecting the outcome of the control, then we will not have an unbiased baseline to compare our treatment outcomes to. This is an issue because we will not be able to measure the true causal effect.**
+
 c.  How does spillover relate to impact in this research setting?
+
+-   **In this setting, spillover from MPA sites to Non-MPA sites has a positive impact. Though it may affect the results of our study, it is a good thing that there may be more lobsters in all sites because of the effects from the MPA sites.**
 
 d.  Discuss the following causal inference assumptions in the context of the MPA treatment effect estimator. Evaluate if each of the assumption are reasonable:
 
     1)  SUTVA: Stable Unit Treatment Value assumption
+
+        -   **In our case, the SUTVA implies that MPA treatment effects are applied equally to all lobsters within MPAs, and that lobsters in the control groups do not recieve any affect from neighboring MPAs. This assumption would be violated if there is in fact a spillover effect occurring in our experiment, however without direct proof that spillover occurs, I think that the assumption is reasonable.**
+
     2)  Excludability assumption
+
+    -   **The excludability assumption implies that the MPA treatment is the sole causal effect on the outcome. In this case, it is very possible that there are outside environmental factors at play that effect lobster counts, like warming. However, considering that our sites are fairly close together, any environmental effects at play should affect all of our sites, and therefore not change any comparisons between our treatment and control sites. For this reason, I think that excludability is a fair assumption.**
 
 ------------------------------------------------------------------------
 
