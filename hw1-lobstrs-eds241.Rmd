@@ -4,9 +4,9 @@ subtitle: "Assessing the Impact of Marine Protected Areas (MPAs) at 5 Reef Sites
 author: "EDS 241"
 date: "1/8/2024 (Due 1/22)"
 output: 
+    pdf_document: default
     html_document:
       theme: flatly
-    pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -59,13 +59,13 @@ Reed D. 2019. SBC LTER: Reef: Abundance, size and fishing effort for California 
 
 ### **Introduction**
 
-You're about to dive into some deep data collected from five reef sites in Santa Barbara County, all about the abundance of California spiny lobsters! 🦞 Data was gathered by divers annually from 2012 to 2018 across Naples, Mohawk, Isla Vista, Carpinteria, and Arroyo Quemado reefs.
+You're about to dive into some deep data collected from five reef sites in Santa Barbara County, all about the abundance of California spiny lobsters!  Data was gathered by divers annually from 2012 to 2018 across Naples, Mohawk, Isla Vista, Carpinteria, and Arroyo Quemado reefs.
 
 Why lobsters? Well, this sample provides an opportunity to evaluate the impact of Marine Protected Areas (MPAs) established on January 1, 2012 (Reed, 2019). Of these five reefs, Naples, and Isla Vista are MPAs, while the other three are not protected (non-MPAs). Comparing lobster health between these protected and non-protected areas gives us the chance to study how commercial and recreational fishing might impact these ecosystems.
 
 We will consider the MPA sites the `treatment` group and use regression methods to explore whether protecting these reefs really makes a difference compared to non-MPA sites (our control group). In this assignment, we’ll think deeply about which causal inference assumptions hold up under the research design and identify where they fall short.
 
-Let’s break it down step by step and see what the data reveals! 📊
+Let’s break it down step by step and see what the data reveals! 
 
 ![](figures/map-5reefs.png)
 
@@ -176,7 +176,7 @@ spiny_counts %>%
                          fill = "coral") +
     xlab("California Spiny Lobster Count") +
     ylab("Reef Site") +
-    labs(title = "Distribution of California Spiny Lobster Counts by Reef Site & Median Counts") +
+    labs(title = "Distribution of Lobster Counts by Reef Site & Median Counts") +
     theme_minimal()
 ```
 
@@ -188,7 +188,7 @@ spiny_counts |>
     geom_jitter(width = 0.3, color = "coral", alpha = 0.5) +
     xlab("MPA Status") +
     ylab("California Spiny Lobster Count") +
-    labs(title = "Distribution of California Spiny Lobster Counts by MPA status") +
+    labs(title = "Distribution of Lobster Counts by MPA status") +
     theme_minimal()
     
 ```
@@ -201,7 +201,7 @@ spiny_counts %>%
     stat_summary(fun.y = mean, geom = "point", color = "coral", size = 3, alpha = 0.7)  +
     xlab("California Spiny Lobster Count") +
     ylab("Year") +
-    labs(title = "Distribution of California Spiny Lobster Counts by Year & Yearly Average Counts") +
+    labs(title = "Distribution of Lobster Counts by Year & Yearly Average Counts") +
     theme_minimal()
 
 ```
@@ -221,7 +221,8 @@ spiny_counts |>
     geom_vline(xintercept = mean(spiny_counts$mean_size, na.rm = TRUE), color = "black") +
     geom_label(aes(x = 61.5, 
                   y = 0.065,
-                  label = paste("Overall Lobster Mean Size = ", round(mean(spiny_counts$mean_size, na.rm = TRUE), 2), "mm")),
+                  label = paste("Overall Lobster Mean Size = ", 
+                                round(mean(spiny_counts$mean_size, na.rm = TRUE), 2), "mm")),
                size = 3,
                show.legend = FALSE)
     
