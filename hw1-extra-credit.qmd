@@ -1,0 +1,145 @@
+---
+title: "HW1 Extra Credit"
+author: Marina Kochuten
+date: 2-7-25
+format: html
+warning: false
+message: false
+---
+
+In this doc, I will be running an analysis evaluating the effect of MPA status on lobster counts using the same focal variables as the homework, only using updated data.
+
+## Setup 
+
+```{r}
+# Load libraries
+library(tidyverse)
+library(here)
+library(janitor)
+library(estimatr)  
+library(performance)
+library(jtools)
+library(gt)
+library(gtsummary)
+library(MASS) ## NOTE: The `select()` function is masked. Use: `dplyr::select()` ##
+library(interactions)
+
+# Read in the data, convert "-99999" to NA, and clean col names
+rawdata24 <- read_csv(here("data", "lobster_sbchannel_24.csv"), na = "-99999") |>
+    clean_names()
+```
+
+## Data wrangling
+
+```{r}
+# Add long lables to our sites and save in a col named reef
+tidydata24 <- rawdata24 |>
+    mutate(reef = factor(site, 
+                         levels = c("AQUE", "CARP", "MOHK", "IVEE", "NAPL"), 
+                         labels = c("Arroyo Quemado", "Carpenteria", "Mohawk", 
+                                    "Isla Vista",  "Naples")))
+
+# Create df with counts of lobsters and MPA status
+spiny_counts24 <- tidydata24 |>
+    group_by(site, year, transect) |>
+    
+    # Count no. of lobsters at each site and calc mean size
+    summarise(count = sum(count, na.rm = TRUE), 
+              mean_size = mean(size_mm, na.rm = TRUE)) |>
+    
+    # Add MPA status
+    mutate(mpa = case_when(site %in% c("IVEE", "NAPL") ~ "MPA",
+                           .default = "non_MPA")) |>
+    mutate(treat = case_when(mpa == "MPA" ~ 1,
+                             .default = 0)) |>
+    ungroup()
+```
+
+## Regression Model 1: OLS
+
+```{r}
+# OLS Model
+m1_ols24 <- lm(count ~ treat,
+             data = spiny_counts24)
+
+# Print model summary
+summ(m1_ols24, model.fit = FALSE) 
+
+# Assess model diagnostics 
+check_model(m1_ols24)
+```
+In this OLS regression model for the 2024 data, the intercept coefficient is 27.27, which tells us that the number of lobsters we expect to see at control (non-MPA) sites is on average 27 lobsters per transect. The predictor coefficient is 7.72, which tells us that at treatment (MPA) sites, average lobster counted is expected to be 7.72 more than at control sites, or about 35 lobsters per transect on average. The p-value for this treatment effect is 0.05, right on the statistically significant threshold and requiring further exploration. When assessing model diagnostics, we see that the data nor the residuals are normally distributed, failing to meet the assumptions of OLS. Just as in the 2018 data, the treatment effect estimated by OLS is not significant and when checking model diagnostics, we see that OLS may not be the best fit.
+
+## Regression model 2: Poisson
+
+```{r}
+# Estimate Poisson regression model
+m2_pois24 <- glm(count ~ treat,
+                 family = poisson(link = "log"),
+                 data = spiny_counts24)
+
+# Print poisson model output
+summ(m2_pois24, model.fit = FALSE)
+
+# Interpret results as percent change
+exp(0.25)-1
+```
+
+In this model, the predictor coefficient is 0.25. When exponentiated, this tells us that the Poisson model estimates on average 28% more lobsters at MPA reef sites than at non-MPA reef sites. Here, we have statistical significance with p = 0, just as we did in the Poisson model for the 2018 data.  
+
+```{r}
+# Assess model diagnostics 
+check_model(m2_pois24)
+```
+Just as with the Poisson model for the 2018 data, things are looking funky in the model diagnostics, telling us that Poisson may not be the best fit for our data.
+
+```{r}
+# Overdispersion and zero-inflation checks
+check_overdispersion(m2_pois24)
+check_zeroinflation(m2_pois24)
+```
+Our data does not meet the assumptions of Poisson regression, just as in the 2018 data. These tests tell us that the dispersion (variance) is significantly larger than the mean, and that there is zero-inflation occurring in the data.
+
+## Regression model 3: Negative Binomial (NB)
+
+```{r}
+# Estimate negative binomial model
+m3_nb24 <- glm.nb(count ~ treat,
+                  data = spiny_counts24)
+
+# Print negative binomial model output
+summ(m3_nb24, model.fit = FALSE)
+
+# Interpret results as percent change
+exp(0.23)-1
+```
+In the Negative Binomial model, the predictor coefficient is 0.25. When exponentiated, this tells us that the NB model estimates on average 26% more lobsters at MPA reef sites than at non-MPA reef sites. The treatment effect in the NB model has p = 0.04, which is statistically significant, unlike the model estimated for the 2018 data!
+
+```{r}
+# Overdispersion and zero-inflation checks
+check_overdispersion(m3_nb24)
+check_zeroinflation(m3_nb24)
+```
+In the NB model, no overdispersion nor zero-inflation was detected. 
+
+```{r}
+# Assess model diagnostics 
+check_model(m3_nb24)
+```
+The results from this model diagnostic test shows that our data fits the NB model much better than the OLS or Poisson models for the 2024 data. 
+
+## Comparing all models: 2018 and 2024
+```{r}
+export_summs(m1_ols, m2_pois, m3_nb,
+             m1_ols24, m2_pois24, m3_nb24,
+             model.names = c("OLS 18","Poisson 18", "NB 18",
+                             "OLS 24","Poisson 24", "NB 24"),
+             statistics = "none")
+```
+
+All of the 2024 models predicted higher lobster counts in both non-MPA and MPA sites than the 2018 models. For the 2018 data, The OLS model predicts on average, 5 more lobsters in MPA sites than non-MPA sites, or a 23.6% increase in lobsters in MPA sites while for the 2024 data, the OLS model predicts on average, 8 more lobsters in MPA sites than non-MPA sites, or a 28% increase in lobsters in MPA sites. For both datasets, assumptions of OLS were violated. For the 2018 data, the Poisson model predicts on average 23% more lobsters in MPA sites than non-MPA sites while for the 2024 data, the Poisson model predicts on average 28% more lobsters in MPA sites. In both Poisson models, we saw overdispersion and zero-inflation, violating Poisson assumptions. For the 2018 data the Negative Binomial model predicts on average 23% more lobsters in MPA sites than non-MPA sites, whole for the 2024 data the NB model also predicts on average 28% more lobsters in MPA sites. And, for both 2018 and 2024, the model checks show that a NB model fit our data pretty well. 
+
+For the 2018 data, the only model that estimated a significant treatment effect was the Poisson model. This was not the case for the 2024 data, where estimated treatment effects in OLS and NB were slightly significant and Poisson was extremely significant. Since larger sample sizes can increase the likelihood of having a significant p-value, it makes sense to me that we would see more significance in the 2024 data. In both the 2018 and the 2024 data, the treatment effect is robust and stable across model specifications!
+
+
+
